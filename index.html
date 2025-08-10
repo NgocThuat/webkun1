@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KunLoska Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input[type="text"], input[type="file"] {
+            padding: 10px;
+            margin: 10px;
+            width: 80%;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+        #download-links a {
+            display: block;
+            margin: 5px;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>KunLoska Email Splitter</h1>
+        <input type="text" id="input-text" placeholder="Enter input text">
+        <input type="file" id="input-file" accept=".txt">
+        <button onclick="submitSplitEmails()">Split Emails</button>
+        <div id="output"></div>
+        <div id="download-links"></div>
+    </div>
+
+    <script type="module">
+        import { client } from "https://cdn.jsdelivr.net/npm/@gradio/client@0.7.0/dist/index.min.js";
+
+        async function submitSplitEmails() {
+            const inputText = document.getElementById('input-text').value;
+            const inputFile = document.getElementById('input-file').files[0];
+            const outputDiv = document.getElementById('output');
+            const downloadLinksDiv = document.getElementById('download-links');
+
+            outputDiv.innerText = 'Processing...';
+            downloadLinksDiv.innerHTML = '';
+
+            try {
+                const app = await client("https://gmailtrust-kunloska.hf.space/", {
+                    hf_token: "your_hf_token" // Thay bằng token Hugging Face nếu Space là private
+                });
+
+                // Gửi file và input text tới API /split_emails
+                const result = await app.predict("/split_emails", [
+                    inputText,
+                    inputFile ? inputFile : null
+                ]);
+
+                // Xử lý kết quả trả về: [input_text, output_text, list_of_files]
+                outputDiv.innerHTML = `
+                    <strong>Input Text:</strong> ${result[0]}<br>
+                    <strong>Output Text:</strong> ${result[1]}
+                `;
+
+                // Hiển thị link tải file (nếu có)
+                if (result[2] && result[2].length > 0) {
+                    downloadLinksDiv.innerHTML = '<strong>Download Files:</strong><br>';
+                    result[2].forEach(file => {
+                        const link = document.createElement('a');
+                        link.href = file.url;
+                        link.textContent = file.orig_name || 'Download File';
+                        link.download = file.orig_name;
+                        downloadLinksDiv.appendChild(link);
+                    });
+                } else {
+                    downloadLinksDiv.innerText = 'No files to download.';
+                }
+            } catch (error) {
+                outputDiv.innerText = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
